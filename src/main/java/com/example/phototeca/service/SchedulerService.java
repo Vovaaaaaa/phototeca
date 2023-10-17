@@ -60,10 +60,12 @@ public class SchedulerService {
                         final Date currentTime = new Date(formatter.format(Calendar.getInstance().getTime()));
                         for (User user : users) {
                             if (currentTime.after(formatter.parse(String.valueOf(user.getWorkStartTime().getHour())))) {
+                                log.info("Notify user with id: " + user.getId());
                                 telegramBotService.sendMessage(user.getChatId(), messageToUser);
                             }
                         }
                         cryptocurrencyRepository.delete(cryptocurrencyBySymbol);
+                        log.info("Updated crypto with symbol: " + cryptocurrency.getSymbol());
                         cryptocurrencyRepository.save(cryptocurrency);
                     }
                 } else {
