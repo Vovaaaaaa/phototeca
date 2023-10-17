@@ -6,24 +6,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "cryptocurrencies")
+@Table(name = "users")
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
-public class Cryptocurrency {
+public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "symbol")
-    private String symbol;
+    @Column(name = "name")
+    private String name;
 
-    @Column(name = "price")
-    private long price;
+    @Column(name = "chat_id")
+    private long chatId;
 
+    @Column(name = "work_start_time", columnDefinition = "TIMESTAMP")
+    private LocalDateTime workStartTime;
 
 }

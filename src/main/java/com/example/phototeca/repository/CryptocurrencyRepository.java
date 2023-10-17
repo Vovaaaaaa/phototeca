@@ -1,4 +1,4 @@
-package com.example.phototeca;
+package com.example.phototeca.repository;
 
 import com.example.phototeca.model.Cryptocurrency;
 import org.springframework.data.jpa.repository.JpaRepository;

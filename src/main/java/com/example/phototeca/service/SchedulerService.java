@@ -1,7 +1,8 @@
 package com.example.phototeca.service;
 
-import com.example.phototeca.CryptocurrencyRepository;
 import com.example.phototeca.model.Cryptocurrency;
+import com.example.phototeca.model.User;
+import com.example.phototeca.repository.CryptocurrencyRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,13 +12,16 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -30,9 +34,10 @@ public class SchedulerService {
 
     private final CryptocurrencyRepository cryptocurrencyRepository;
     private final TelegramBotService telegramBotService;
+    private final UserService userService;
 
     @Scheduled(fixedRate = 1000)
-    public void cryptoUpdateScheduler() throws IOException {
+    public void cryptoUpdateScheduler() throws IOException, ParseException {
         log.info("Scheduler updating cryptocurrencies.");
         final String jsonAsString = readFile();
         List<Cryptocurrency> cryptocurrencies = convertToObject(jsonAsString);
@@ -40,18 +45,24 @@ public class SchedulerService {
     }
 
     @Transactional
-    public void updateCryptocurrencies(final List<Cryptocurrency> cryptocurrencies) {
+    public void updateCryptocurrencies(final List<Cryptocurrency> cryptocurrencies) throws ParseException {
         if (cryptocurrencies != null) {
             for (Cryptocurrency cryptocurrency : cryptocurrencies) {
-                Cryptocurrency cryptocurrencyBySymbol = cryptocurrencyRepository.findBySymbol(cryptocurrency.getSymbol());
+                final Cryptocurrency cryptocurrencyBySymbol = cryptocurrencyRepository.findBySymbol(cryptocurrency.getSymbol());
                 if (cryptocurrencyBySymbol != null) {
                     final double percent = (double) cryptocurrencyBySymbol.getPrice() / cryptocurrency.getPrice();
-                    if (percent != 0) {
+                    if (percent != 0.0) {
                         final String messageToUser = percent > 0.0 ?
                                 "Cryptocurrency " + cryptocurrency.getSymbol() + " becomes more expensive by more than " + percent + "  percent." :
                                 "Cryptocurrency " + cryptocurrency.getSymbol() + " becomes more cheaper by more than " + percent + "  percent.";
-                        sendMessageToUser(messageToUser);
-
+                        final List<User> users = userService.findAll();
+                        final SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
+                        final Date currentTime = new Date(formatter.format(Calendar.getInstance().getTime()));
+                        for (User user : users) {
+                            if (currentTime.after(formatter.parse(String.valueOf(user.getWorkStartTime().getHour())))) {
+                                telegramBotService.sendMessage(user.getChatId(), messageToUser);
+                            }
+                        }
                         cryptocurrencyRepository.delete(cryptocurrencyBySymbol);
                         cryptocurrencyRepository.save(cryptocurrency);
                     }
@@ -59,16 +70,6 @@ public class SchedulerService {
                     cryptocurrencyRepository.save(cryptocurrency);
                 }
             }
-        }
-    }
-
-    public void sendMessageToUser(final long chatId, final String textToSend) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textToSend);
-
-        try {
-
         }
     }
 
